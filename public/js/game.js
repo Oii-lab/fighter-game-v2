@@ -34,7 +34,7 @@ let inGame     = false;
 
 // ── Input ─────────────────────────────────────────────────────────────────
 const keys = {};
-const prevSent = { left:false, right:false, jump:false, attack:false, dash:false };
+const prevSent = { left:false, right:false, jump:false, attack:false, dash:false, up:false, down:false };
 
 window.addEventListener('keydown', e => {
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
@@ -46,9 +46,11 @@ function readInput() {
   return {
     left:   !!(keys['KeyA'] || keys['ArrowLeft']),
     right:  !!(keys['KeyD'] || keys['ArrowRight']),
-    jump:   !!(keys['KeyW'] || keys['ArrowUp'] || keys['Space']),
+    jump:   !!(keys['KeyW'] || keys['Space']),
     attack: !!(keys['KeyJ'] || keys['KeyZ']),
     dash:   !!(keys['KeyK'] || keys['KeyX']),
+    up:     !!(keys['ArrowUp']),
+    down:   !!(keys['ArrowDown']),
   };
 }
 
@@ -57,7 +59,7 @@ setInterval(() => {
   const inp = readInput();
   if (inp.left !== prevSent.left || inp.right !== prevSent.right ||
       inp.jump !== prevSent.jump || inp.attack !== prevSent.attack ||
-      inp.dash !== prevSent.dash) {
+      inp.dash !== prevSent.dash || inp.up !== prevSent.up || inp.down !== prevSent.down) {
     socket.emit('input', inp);
     Object.assign(prevSent, inp);
   }
@@ -605,17 +607,32 @@ function drawSpecialObjects() {
   if (gameState.bombBoxes) {
     for (const box of gameState.bombBoxes) {
       if (!box.alive) continue;
+      const pulse = 0.6 + Math.sin(now * 6) * 0.4;
+      const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+      // Glow only - no box
       ctx.save();
-      const pulse = 0.8 + Math.sin(now * 5) * 0.2;
-      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8 * pulse;
-      const bg = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
-      bg.addColorStop(0, '#cc3300'); bg.addColorStop(1, '#661100');
-      ctx.fillStyle = bg; ctx.fillRect(box.x, box.y, box.w, box.h);
-      ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2;
-      ctx.strokeRect(box.x, box.y, box.w, box.h); ctx.restore();
-      ctx.save(); ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New';
-      ctx.textAlign = 'center';
-      ctx.fillText('💣', box.x + box.w / 2, box.y + box.h / 2 + 5); ctx.restore();
+      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 18 * pulse;
+      ctx.globalAlpha = 0.35 * pulse;
+      ctx.beginPath(); ctx.arc(cx, cy, box.w * 0.6, 0, Math.PI*2);
+      ctx.fillStyle = '#ff4400'; ctx.fill();
+      ctx.restore();
+      // Sparkle particles around it
+      ctx.save(); ctx.globalAlpha = 0.7 * pulse;
+      ctx.fillStyle = '#ffaa00';
+      for (let sp = 0; sp < 4; sp++) {
+        const a = now * 3 + sp * Math.PI / 2;
+        const r = 16 + Math.sin(now * 4 + sp) * 4;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 2, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+      // Emoji on top
+      ctx.save();
+      ctx.font = `${20 + pulse * 4}px serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('💣', cx, cy);
+      ctx.restore();
     }
   }
 
@@ -793,22 +810,31 @@ function render(ts) {
     ctx.fillStyle = '#000';
     ctx.beginPath(); ctx.arc(hX + eyeOX + ps.facing*1.5, hY + hH*0.45, 2, 0, Math.PI*2); ctx.fill();
 
-    // Gun barrel — tank has thicker barrel
+    // Gun barrel with aim angle
     const isTank = ps.charKey === 'tank';
-    const gunH = isTank ? 8 : 6;
     const gunW = isTank ? 22 : 18;
-    const gunY = ps.y + PH * 0.38 - (gunH - 6) / 2;
+    const gunH = isTank ? 6 : 5;
+    const aimAngle = (ps.aimAngle || 0) * Math.PI / 4;
+    const gunBaseX = ps.x + (ps.facing > 0 ? PW : 0);
+    const gunBaseY = ps.y + PH * 0.42;
+    ctx.save();
+    ctx.translate(gunBaseX, gunBaseY);
+    ctx.rotate(ps.facing > 0 ? aimAngle : Math.PI - aimAngle);
     ctx.fillStyle = isTank ? '#ccc' : '#aaa';
-    ctx.fillRect(
-      ps.facing > 0 ? ps.x + PW - 2 : ps.x + 2 - gunW,
-      gunY, gunW, gunH
-    );
-    // Muzzle tip
+    ctx.fillRect(0, -gunH/2, gunW, gunH);
     ctx.fillStyle = color;
-    ctx.fillRect(
-      ps.facing > 0 ? ps.x + PW + gunW - 4 : ps.x + 2 - gunW,
-      gunY, 4, gunH
-    );
+    ctx.fillRect(gunW - 4, -gunH/2, 4, gunH);
+    ctx.restore();
+    // Aim indicator dot when angled
+    if (ps.aimAngle !== 0) {
+      const dotDist = gunW + 6;
+      const dotX = gunBaseX + ps.facing * dotDist * Math.cos(aimAngle);
+      const dotY = gunBaseY + dotDist * Math.sin(ps.facing > 0 ? aimAngle : -aimAngle);
+      ctx.save();
+      ctx.fillStyle = color; ctx.globalAlpha = 0.5;
+      ctx.beginPath(); ctx.arc(dotX, dotY, 3, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
 
     ctx.restore();
 
