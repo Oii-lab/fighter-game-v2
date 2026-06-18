@@ -473,22 +473,67 @@ function drawSpecialObjects() {
 
   // ── Reflect walls ──
   for (const rw of (sceneData.reflectWalls || [])) {
+    const t = rw.type || 'v';
+    const now2 = Date.now() / 1000;
     ctx.save();
-    const rwg = ctx.createLinearGradient(rw.x, rw.y, rw.x + rw.w, rw.y);
-    rwg.addColorStop(0, 'rgba(0,200,255,0.05)');
-    rwg.addColorStop(0.5, 'rgba(0,220,255,0.35)');
-    rwg.addColorStop(1, 'rgba(0,200,255,0.05)');
-    ctx.fillStyle = rwg; ctx.fillRect(rw.x, rw.y, rw.w, rw.h);
-    ctx.shadowColor = '#00ccff'; ctx.shadowBlur = 12;
-    ctx.strokeStyle = 'rgba(0,200,255,0.7)'; ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(rw.x, rw.y, rw.w, rw.h);
-    ctx.restore();
-    // bounce arrows
-    ctx.save(); ctx.fillStyle = 'rgba(0,200,255,0.5)';
-    ctx.font = '10px Courier New'; ctx.textAlign = 'center';
-    for (let ay = rw.y + 20; ay < rw.y + rw.h - 10; ay += 40)
-      ctx.fillText('↔', rw.x + rw.w / 2, ay);
+
+    if (t === 'h') {
+      // Horizontal wall - reflects up/down
+      const hg = ctx.createLinearGradient(rw.x, rw.y, rw.x + rw.w, rw.y);
+      hg.addColorStop(0, 'rgba(0,220,255,0.1)');
+      hg.addColorStop(0.5, 'rgba(0,220,255,0.8)');
+      hg.addColorStop(1, 'rgba(0,220,255,0.1)');
+      ctx.fillStyle = hg; ctx.fillRect(rw.x, rw.y, rw.w, rw.h);
+      ctx.shadowColor = '#00ddff'; ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#44eeff'; ctx.lineWidth = 2;
+      ctx.strokeRect(rw.x, rw.y, rw.w, rw.h);
+      // Up/down arrows along wall
+      ctx.fillStyle = 'rgba(0,220,255,0.6)'; ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+      for (let ax = rw.x + 30; ax < rw.x + rw.w - 20; ax += 50)
+        ctx.fillText('↕', ax, rw.y + rw.h / 2 + 4);
+
+    } else if (t === 'diag') {
+      // Diagonal 45° wall
+      ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 3;
+      // Draw as a diagonal line
+      if (rw.flip) {
+        ctx.beginPath(); ctx.moveTo(rw.x + rw.w, rw.y); ctx.lineTo(rw.x, rw.y + rw.h * 3); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(rw.x, rw.y); ctx.lineTo(rw.x + rw.w, rw.y + rw.h * 3); ctx.stroke();
+      }
+      // Arrow showing deflect
+      ctx.fillStyle = '#ffcc44'; ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
+      ctx.fillText('↗', rw.x + rw.w / 2, rw.y + 6);
+
+    } else if (t === 'hidden') {
+      // Hidden wall - faint shimmer, barely visible
+      ctx.globalAlpha = 0.12 + Math.sin(now2 * 2) * 0.06;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rw.x, rw.y, rw.w, rw.h);
+      // Occasionally slightly more visible
+      if (Math.sin(now2 * 0.5) > 0.8) {
+        ctx.globalAlpha = 0.25;
+        ctx.strokeStyle = '#aaaaff'; ctx.lineWidth = 1;
+        ctx.setLineDash([4, 8]);
+        ctx.strokeRect(rw.x, rw.y, rw.w, rw.h);
+      }
+
+    } else {
+      // 'v' - vertical wall, reflects left/right
+      const vg = ctx.createLinearGradient(rw.x, rw.y, rw.x, rw.y + rw.h);
+      vg.addColorStop(0, 'rgba(0,220,255,0.1)');
+      vg.addColorStop(0.5, 'rgba(0,220,255,0.8)');
+      vg.addColorStop(1, 'rgba(0,220,255,0.1)');
+      ctx.fillStyle = vg; ctx.fillRect(rw.x, rw.y, rw.w, rw.h);
+      ctx.shadowColor = '#00ddff'; ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#44eeff'; ctx.lineWidth = 2;
+      ctx.strokeRect(rw.x, rw.y, rw.w, rw.h);
+      ctx.fillStyle = 'rgba(0,220,255,0.6)'; ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+      for (let ay = rw.y + 16; ay < rw.y + rw.h - 10; ay += 30)
+        ctx.fillText('↔', rw.x + rw.w / 2, ay);
+    }
+
     ctx.restore();
   }
 
@@ -570,7 +615,7 @@ function drawSpecialObjects() {
       ctx.strokeRect(box.x, box.y, box.w, box.h); ctx.restore();
       ctx.save(); ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New';
       ctx.textAlign = 'center';
-      ctx.fillText('💥', box.x + box.w / 2, box.y + box.h / 2 + 5); ctx.restore();
+      ctx.fillText('💣', box.x + box.w / 2, box.y + box.h / 2 + 5); ctx.restore();
     }
   }
 
@@ -580,16 +625,10 @@ function drawSpecialObjects() {
       if (!hp.alive) continue;
       const pulse = 0.7 + Math.sin(now * 3) * 0.3;
       ctx.save();
-      ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 14 * pulse;
-      ctx.fillStyle = '#00cc66';
-      ctx.beginPath(); ctx.arc(hp.x, hp.y, hp.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#88ffcc'; ctx.lineWidth = 2;
-      ctx.stroke(); ctx.restore();
-      // Cross
-      ctx.save(); ctx.fillStyle = '#fff'; ctx.lineWidth = 3;
-      ctx.strokeStyle = '#fff';
-      ctx.beginPath(); ctx.moveTo(hp.x - 5, hp.y); ctx.lineTo(hp.x + 5, hp.y); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(hp.x, hp.y - 5); ctx.lineTo(hp.x, hp.y + 5); ctx.stroke();
+      ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 16 * pulse;
+      ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.globalAlpha = 0.85 + pulse * 0.15;
+      ctx.fillText('🍗', hp.x, hp.y);
       ctx.restore();
     }
   }
