@@ -749,16 +749,37 @@ socket.on('gameRestart', (payload) => {
   prevHPs = {};
   for (const c of payload.characters) prevHPs[c.index] = c.char.maxHP;
   inGame = true;
+  opponentLeft = false;
+  restartBtn.textContent = 'REMATCH';
   if (gameState) gameState.winner = null;
 });
 
 socket.on('gameState', (state) => { gameState = state; });
 
+let opponentLeft = false;
+
 socket.on('playerLeft', () => {
   inGame = false;
+  opponentLeft = true;
   resultOverlay.style.display = 'flex';
   resultText.textContent = 'OPPONENT LEFT';
   resultText.style.color = '#888';
+  restartBtn.textContent = 'BACK TO LOBBY';
 });
 
-restartBtn.addEventListener('click', () => { socket.emit('requestRestart'); });
+restartBtn.addEventListener('click', () => {
+  if (opponentLeft) {
+    // 返回大廳
+    location.reload();
+  } else {
+    socket.emit('requestRestart');
+  }
+});
+
+// 鍵盤 Enter / Space 確認結果畫面
+window.addEventListener('keydown', e => {
+  if (resultOverlay.style.display !== 'none' && (e.code === 'Enter' || e.code === 'Space')) {
+    e.preventDefault();
+    restartBtn.click();
+  }
+});
