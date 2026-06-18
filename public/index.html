@@ -5,29 +5,201 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DUEL — 1v1 Platform Fighter</title>
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Lobby redesign ───────────────────────────────────────────────── */
+    #lobby {
+      display: flex; align-items: center; justify-content: center;
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: #06060e;
+      position: relative;
+    }
+
+    /* Animated background grid */
+    #lobby::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(76,201,240,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76,201,240,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridDrift 20s linear infinite;
+    }
+    @keyframes gridDrift {
+      from { background-position: 0 0; }
+      to   { background-position: 60px 60px; }
+    }
+
+    /* Vignette */
+    #lobby::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, #06060e 100%);
+      pointer-events: none;
+    }
+
+    .lobby-inner {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0; width: 420px;
+    }
+
+    /* ── Title ── */
+    .title-wrap {
+      display: flex; align-items: center; gap: 0;
+      margin-bottom: 6px; position: relative;
+    }
+    .title-left  { font-size: 100px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; color: #4cc9f0; text-shadow: 0 0 40px rgba(76,201,240,0.6), 0 0 80px rgba(76,201,240,0.2); font-family: 'Courier New', monospace; }
+    .title-right { font-size: 100px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; color: #f5c400; text-shadow: 0 0 40px rgba(245,196,0,0.6),   0 0 80px rgba(245,196,0,0.2);   font-family: 'Courier New', monospace; }
+    .title-divider {
+      width: 4px; height: 90px; margin: 0 2px;
+      background: linear-gradient(to bottom, transparent, #fff 30%, #fff 70%, transparent);
+      opacity: 0.7;
+      animation: divPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes divPulse {
+      0%,100% { opacity: 0.4; transform: scaleY(0.95); }
+      50%      { opacity: 0.9; transform: scaleY(1.05); }
+    }
+
+    .subtitle {
+      font-size: 11px; letter-spacing: 0.45em; color: rgba(255,255,255,0.3);
+      text-transform: uppercase; margin-bottom: 40px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── VS badge ── */
+    .vs-row {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 32px; width: 100%;
+    }
+    .vs-player {
+      flex: 1; padding: 10px 16px; border-radius: 4px;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
+      font-family: 'Courier New', monospace;
+    }
+    .vs-player.p1 { background: rgba(76,201,240,0.08); border: 1px solid rgba(76,201,240,0.25); color: #4cc9f0; text-align: left; }
+    .vs-player.p2 { background: rgba(245,196,0,0.08);  border: 1px solid rgba(245,196,0,0.25);  color: #f5c400;  text-align: right; }
+    .vs-badge {
+      font-size: 18px; font-weight: 900; color: #fff; opacity: 0.5;
+      font-family: 'Courier New', monospace; letter-spacing: 0.1em;
+    }
+
+    /* ── Room input ── */
+    .room-section { width: 100%; margin-bottom: 12px; }
+    .room-label {
+      font-size: 10px; letter-spacing: 0.3em; color: rgba(255,255,255,0.3);
+      font-family: 'Courier New', monospace; margin-bottom: 8px; display: block;
+    }
+    .room-input-row { display: flex; gap: 8px; }
+    #roomInput {
+      flex: 1; padding: 14px 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; color: #fff;
+      font-family: 'Courier New', monospace;
+      font-size: 22px; letter-spacing: 0.2em; text-transform: uppercase;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    #roomInput:focus {
+      border-color: #4cc9f0;
+      box-shadow: 0 0 0 1px #4cc9f0, inset 0 0 20px rgba(76,201,240,0.05);
+    }
+    #roomInput::placeholder { color: rgba(255,255,255,0.18); font-size: 13px; letter-spacing: 0.1em; text-transform: none; }
+
+    #joinBtn {
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #e63946, #c1121f);
+      border: none; border-radius: 4px;
+      color: #fff; font-family: 'Courier New', monospace;
+      font-size: 13px; font-weight: 700; letter-spacing: 0.25em;
+      cursor: pointer; white-space: nowrap;
+      transition: box-shadow 0.15s, transform 0.1s;
+    }
+    #joinBtn:hover { box-shadow: 0 0 20px rgba(230,57,70,0.5); }
+    #joinBtn:active { transform: scale(0.97); }
+
+    #lobbyStatus {
+      font-size: 12px; color: #4cc9f0; letter-spacing: 0.15em;
+      min-height: 18px; text-align: center; margin-top: 6px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Controls ── */
+    .controls-section {
+      width: 100%; margin-top: 24px;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 6px; overflow: hidden;
+    }
+    .controls-header {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.04);
+      font-size: 9px; letter-spacing: 0.35em; color: rgba(255,255,255,0.25);
+      font-family: 'Courier New', monospace; text-transform: uppercase;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .controls-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      padding: 4px 0;
+    }
+    .ctrl-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 16px; gap: 12px;
+    }
+    .ctrl-row:nth-child(odd) { background: rgba(255,255,255,0.02); }
+    .ctrl-name {
+      font-size: 11px; color: rgba(255,255,255,0.35);
+      font-family: 'Courier New', monospace; letter-spacing: 0.1em;
+    }
+    .ctrl-key {
+      font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7);
+      font-family: 'Courier New', monospace;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 3px; padding: 2px 8px;
+      white-space: nowrap;
+    }
+  </style>
 </head>
 <body>
 
 <!-- ── Lobby ─────────────────────────────────────────────────────────────── -->
 <div id="lobby">
   <div class="lobby-inner">
-    <h1 class="game-title">DUEL</h1>
-    <p class="subtitle">1v1 Platform Fighter</p>
 
-    <div class="input-group">
-      <label for="roomInput">ROOM ID</label>
-      <input id="roomInput" type="text" maxlength="12" placeholder="輸入或建立房間" autocomplete="off" spellcheck="false" />
+    <div class="title-wrap">
+      <span class="title-left">DU</span>
+      <div class="title-divider"></div>
+      <span class="title-right">EL</span>
     </div>
-    <button id="joinBtn" class="btn-primary">JOIN / CREATE</button>
-    <div id="lobbyStatus" class="lobby-status"></div>
+    <p class="subtitle">1 v 1 &nbsp; Platform Fighter</p>
 
-    <div class="controls-hint">
-      <div class="hint-col"><span class="hint-label">移動</span><span class="hint-key">A / D · ← →</span></div>
-      <div class="hint-col"><span class="hint-label">跳躍</span><span class="hint-key">W / Space</span></div>
-      <div class="hint-col"><span class="hint-label">瞄準</span><span class="hint-key">↑ / ↓</span></div>
-      <div class="hint-col"><span class="hint-label">攻擊</span><span class="hint-key">Z</span></div>
-      <div class="hint-col"><span class="hint-label">衝刺</span><span class="hint-key">X</span></div>
+    <div class="vs-row">
+      <div class="vs-player p1">PLAYER 1<br><small style="opacity:.5;font-size:10px">快手 / 重砲</small></div>
+      <div class="vs-badge">VS</div>
+      <div class="vs-player p2"><small style="opacity:.5;font-size:10px">快手 / 重砲</small><br>PLAYER 2</div>
     </div>
+
+    <div class="room-section">
+      <span class="room-label">ROOM ID</span>
+      <div class="room-input-row">
+        <input id="roomInput" type="text" maxlength="12" placeholder="輸入或建立房間" autocomplete="off" spellcheck="false" />
+        <button id="joinBtn">ENTER</button>
+      </div>
+      <div id="lobbyStatus"></div>
+    </div>
+
+    <div class="controls-section">
+      <div class="controls-header">操作說明</div>
+      <div class="controls-grid">
+        <div class="ctrl-row"><span class="ctrl-name">移動</span><span class="ctrl-key">A D · ← →</span></div>
+        <div class="ctrl-row"><span class="ctrl-name">跳躍</span><span class="ctrl-key">W · Space</span></div>
+        <div class="ctrl-row"><span class="ctrl-name">瞄準</span><span class="ctrl-key">↑ · ↓</span></div>
+        <div class="ctrl-row"><span class="ctrl-name">攻擊</span><span class="ctrl-key">Z</span></div>
+        <div class="ctrl-row"><span class="ctrl-name">衝刺</span><span class="ctrl-key">X</span></div>
+        <div class="ctrl-row"><span class="ctrl-name">二段跳</span><span class="ctrl-key">W × 2</span></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -45,7 +217,6 @@
 <div id="gameScreen" style="display:none">
   <canvas id="gameCanvas"></canvas>
 
-  <!-- HUD -->
   <div id="hud">
     <div class="hud-player" id="hud0">
       <div class="hud-name">P1 <span class="hud-you" id="youLabel0"></span><span class="hud-char" id="charLabel0"></span></div>
@@ -63,16 +234,14 @@
     </div>
   </div>
 
-  <!-- Result overlay -->
   <div id="resultOverlay" style="display:none">
     <div class="result-box">
       <div id="resultText"></div>
       <button id="restartBtn" class="btn-primary">REMATCH</button>
-      <div class="result-hint">（任一方按下即重開）</div>
+      <div class="result-hint">Enter / Space 或點擊重開</div>
     </div>
   </div>
 
-  <!-- Waiting overlay -->
   <div id="waitingOverlay">
     <div class="waiting-box">
       <div class="waiting-spinner"></div>
