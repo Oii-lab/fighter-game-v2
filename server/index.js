@@ -123,7 +123,7 @@ const SCENES = [
       {platformIdx:4,side:'right'},{platformIdx:5,side:'left'},
     ],
     boostPads:[{x:550,y:180,w:80,h:14}],
-    reflectWalls:[{x:0,y:0,w:10,h:700},{x:1190,y:0,w:10,h:700}],
+    reflectWalls:[{x:595,y:180,w:10,h:160}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
   {
@@ -153,7 +153,7 @@ const SCENES = [
       {platformIdx:4,side:'both'},{platformIdx:5,side:'both'},{platformIdx:6,side:'both'},
     ],
     boostPads:[],
-    reflectWalls:[{x:0,y:0,w:10,h:700},{x:1190,y:0,w:10,h:700}],
+    reflectWalls:[{x:595,y:200,w:10,h:180}],
     spawn:[{x:50,y:540},{x:1090,y:540}],
   },
   {
@@ -203,7 +203,7 @@ const SCENES = [
     bombBoxes:[{x:575,y:360,w:30,h:30}],
     spikePlatforms:[{platformIdx:4,side:'both'},{platformIdx:5,side:'both'}],
     boostPads:[],
-    reflectWalls:[{x:0,y:0,w:10,h:700},{x:1190,y:0,w:10,h:700}],
+    reflectWalls:[{x:595,y:350,w:10,h:200}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
   {
@@ -252,7 +252,7 @@ const SCENES = [
     bombBoxes:[{x:560,y:240,w:30,h:30}],
     spikePlatforms:[{platformIdx:3,side:'right'},{platformIdx:4,side:'left'}],
     boostPads:[],
-    reflectWalls:[{x:0,y:0,w:10,h:700},{x:1190,y:0,w:10,h:700}],
+    reflectWalls:[],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
 ];
@@ -294,6 +294,7 @@ function createPlayer(index, charKey) {
     coyoteTimer:0, jumpBufferTimer:0, dead:false,
     gravityFlipped:false,
     boostTimer:0,
+    portalCooldown:0,
     input:{left:false,right:false,jump:false,attack:false,dash:false},
     prevInput:{left:false,right:false,jump:false,attack:false,dash:false},
   };
@@ -379,7 +380,7 @@ function spawnPlayer(p,scene){
   p.dashing=false;p.dashTimer=0;p.dashCooldownTimer=0.5;
   p.shootCooldownTimer=0;p.invincibleTimer=1.0;
   p.coyoteTimer=0;p.jumpBufferTimer=0;p.dead=false;
-  p.gravityFlipped=false;p.boostTimer=0;
+  p.gravityFlipped=false;p.boostTimer=0;p.portalCooldown=0;
   p.hp=p.char.maxHP;
 }
 
@@ -479,6 +480,7 @@ function tickRoom(room){
     p.coyoteTimer        =Math.max(0,p.coyoteTimer-DT);
     p.jumpBufferTimer    =Math.max(0,p.jumpBufferTimer-DT);
     p.boostTimer         =Math.max(0,p.boostTimer-DT);
+    p.portalCooldown     =Math.max(0,p.portalCooldown-DT);
 
     if(inp.jump&&!prev.jump)p.jumpBufferTimer=PLAYER_BASE.jumpBuffer;
 
@@ -579,17 +581,18 @@ function tickRoom(room){
       }
     }
 
-    // Portal teleport
-    for(const portal of scene.portals){
-      const pw=PLAYER_BASE.width,ph=PLAYER_BASE.height;
-      const cx=p.x+pw/2,cy=p.y+ph/2;
-      // A portal
-      if(cx>portal.ax&&cx<portal.ax+portal.w&&cy>portal.ay-portal.h/2&&cy<portal.ay+portal.h/2){
-        p.x=portal.bx+portal.w/2-pw/2;p.y=portal.by-ph;
-      }
-      // B portal
-      else if(cx>portal.bx&&cx<portal.bx+portal.w&&cy>portal.by-portal.h/2&&cy<portal.by+portal.h/2){
-        p.x=portal.ax+portal.w/2-pw/2;p.y=portal.ay-ph;
+    // Portal teleport (with cooldown to prevent loop)
+    if(p.portalCooldown<=0){
+      for(const portal of scene.portals){
+        const pw=PLAYER_BASE.width,ph=PLAYER_BASE.height;
+        const cx=p.x+pw/2,cy=p.y+ph/2;
+        if(cx>portal.ax&&cx<portal.ax+portal.w&&cy>portal.ay-portal.h/2&&cy<portal.ay+portal.h/2){
+          p.x=portal.bx+portal.w/2-pw/2;p.y=portal.by-ph;
+          p.portalCooldown=1.0; break;
+        } else if(cx>portal.bx&&cx<portal.bx+portal.w&&cy>portal.by-portal.h/2&&cy<portal.by+portal.h/2){
+          p.x=portal.ax+portal.w/2-pw/2;p.y=portal.ay-ph;
+          p.portalCooldown=1.0; break;
+        }
       }
     }
 
