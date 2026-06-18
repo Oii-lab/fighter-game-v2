@@ -47,8 +47,8 @@ function readInput() {
     left:   !!(keys['KeyA'] || keys['ArrowLeft']),
     right:  !!(keys['KeyD'] || keys['ArrowRight']),
     jump:   !!(keys['KeyW'] || keys['Space']),
-    attack: !!(keys['KeyJ'] || keys['KeyZ']),
-    dash:   !!(keys['KeyK'] || keys['KeyX']),
+    attack: !!(keys['KeyZ']),
+    dash:   !!(keys['KeyX']),
     up:     !!(keys['ArrowUp']),
     down:   !!(keys['ArrowDown']),
   };
