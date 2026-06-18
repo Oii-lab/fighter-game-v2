@@ -49,7 +49,7 @@ const SCENES = [
     portals:[ {ax:20,ay:580,bx:1160,by:580,w:24,h:40} ],
     bombBoxes:[ {x:570,y:350,w:30,h:30} ],
     spikePlatforms:[], boostPads:[],
-    reflectWalls:[], spawn:[{x:140,y:540},{x:1020,y:540}],
+    reflectWalls:[{x:560,y:310,w:80,h:10,type:'diag'}], spawn:[{x:140,y:540},{x:1020,y:540}],
   },
   {
     name: 'LAVA RIFT', theme: 'lava',
@@ -73,7 +73,7 @@ const SCENES = [
     spikePlatforms:[
       {platformIdx:2, side:'right'},{platformIdx:3, side:'left'},
     ],
-    boostPads:[], reflectWalls:[],
+    boostPads:[], reflectWalls:[{x:350,y:350,w:100,h:8,type:'hidden'},{x:750,y:350,w:100,h:8,type:'hidden'}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
   {
@@ -99,7 +99,7 @@ const SCENES = [
     portals:[{ax:20,ay:580,bx:1160,by:580,w:24,h:40}],
     bombBoxes:[], spikePlatforms:[],
     boostPads:[{x:420,y:430,w:60,h:14},{x:720,y:430,w:60,h:14}],
-    reflectWalls:[{x:595,y:200,w:10,h:180}],
+    reflectWalls:[{x:540,y:310,w:120,h:8,type:'hidden'}],
     spawn:[{x:60,y:540},{x:1080,y:540}],
   },
   {
@@ -123,7 +123,7 @@ const SCENES = [
       {platformIdx:4,side:'right'},{platformIdx:5,side:'left'},
     ],
     boostPads:[{x:550,y:180,w:80,h:14}],
-    reflectWalls:[{x:595,y:180,w:10,h:160}],
+    reflectWalls:[{x:480,y:230,w:80,h:10,type:'diag'},{x:640,y:230,w:80,h:10,type:'diag',flip:true}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
   {
@@ -153,7 +153,7 @@ const SCENES = [
       {platformIdx:4,side:'both'},{platformIdx:5,side:'both'},{platformIdx:6,side:'both'},
     ],
     boostPads:[],
-    reflectWalls:[{x:595,y:200,w:10,h:180}],
+    reflectWalls:[{x:220,y:580,w:10,h:40,type:'v'},{x:940,y:580,w:10,h:40,type:'v'}],
     spawn:[{x:50,y:540},{x:1090,y:540}],
   },
   {
@@ -178,7 +178,7 @@ const SCENES = [
       {platformIdx:1,side:'right'},{platformIdx:2,side:'left'},
     ],
     boostPads:[{x:210,y:320,w:60,h:14},{x:930,y:320,w:60,h:14}],
-    reflectWalls:[],
+    reflectWalls:[{x:460,y:380,w:80,h:10,type:'diag'},{x:660,y:380,w:80,h:10,type:'diag',flip:true}],
     spawn:[{x:120,y:540},{x:1040,y:540}],
   },
   {
@@ -203,7 +203,7 @@ const SCENES = [
     bombBoxes:[{x:575,y:360,w:30,h:30}],
     spikePlatforms:[{platformIdx:4,side:'both'},{platformIdx:5,side:'both'}],
     boostPads:[],
-    reflectWalls:[{x:595,y:350,w:10,h:200}],
+    reflectWalls:[{x:440,y:300,w:320,h:10,type:'h'}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
   {
@@ -230,7 +230,7 @@ const SCENES = [
     bombBoxes:[],
     spikePlatforms:[{platformIdx:4,side:'right'},{platformIdx:5,side:'left'}],
     boostPads:[{x:540,y:260,w:80,h:14}],
-    reflectWalls:[],
+    reflectWalls:[{x:350,y:180,w:500,h:10,type:'h'}],
     spawn:[{x:80,y:540},{x:1080,y:540}],
   },
   {
@@ -252,7 +252,7 @@ const SCENES = [
     bombBoxes:[{x:560,y:240,w:30,h:30}],
     spikePlatforms:[{platformIdx:3,side:'right'},{platformIdx:4,side:'left'}],
     boostPads:[],
-    reflectWalls:[],
+    reflectWalls:[{x:350,y:350,w:100,h:8,type:'hidden'},{x:750,y:350,w:100,h:8,type:'hidden'}],
     spawn:[{x:100,y:540},{x:1060,y:540}],
   },
 ];
@@ -678,23 +678,35 @@ function tickRoom(room){
     let reflected=false;
     for(const rw of scene.reflectWalls){
       if(b.x>rw.x&&b.x<rw.x+rw.w&&b.y>rw.y&&b.y<rw.y+rw.h){
-        b.vx=-b.vx;b.x+=b.vx*DT*2;
         b.bounces=(b.bounces||0)+1;
-        if(b.bounces>3){room.bullets.splice(i,1);reflected=true;break;}
-        reflected=true;break;
+        if(b.bounces>4){room.bullets.splice(i,1);reflected=true;break;}
+        const t=rw.type||'v';
+        if(t==='h'){
+          b.vy=-b.vy; b.y+=b.vy*DT*2;
+        } else if(t==='diag'){
+          // 45deg: swap vx/vy, optionally flip
+          const tmp=b.vx; b.vx=rw.flip?b.vy:-b.vy; b.vy=rw.flip?-tmp:tmp;
+          b.x+=b.vx*DT*2; b.y+=b.vy*DT*2;
+        } else if(t==='hidden'){
+          // random reflect direction slightly varied
+          b.vx=-b.vx; b.x+=b.vx*DT*2;
+        } else {
+          // 'v' default: vertical wall, horizontal bounce
+          b.vx=-b.vx; b.x+=b.vx*DT*2;
+        }
+        reflected=true; break;
       }
     }
     if(reflected) continue;
 
-    // Platform bounce (left/right walls of solid platforms)
+    // Platform collision
     let hitPlat=false;
     for(const plat of allPlatforms){
       if(plat.type==='launchpad') continue;
       if(b.x>plat.x&&b.x<plat.x+plat.w&&b.y>plat.y&&b.y<plat.y+plat.h){
-        if(plat.type==='mirrorwall'||scene.reflectWalls.length>0){
-          // walls reflect bullets horizontally
+        if(plat.type==='mirrorwall'){
           b.vx=-b.vx;b.bounces=(b.bounces||0)+1;
-          if(b.bounces>3){room.bullets.splice(i,1);hitPlat=true;}
+          if(b.bounces>4){room.bullets.splice(i,1);hitPlat=true;}
         } else {
           room.bullets.splice(i,1);hitPlat=true;
         }
