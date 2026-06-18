@@ -295,8 +295,9 @@ function createPlayer(index, charKey) {
     gravityFlipped:false,
     boostTimer:0,
     portalCooldown:0,
-    input:{left:false,right:false,jump:false,attack:false,dash:false},
-    prevInput:{left:false,right:false,jump:false,attack:false,dash:false},
+    aimAngle:0,  // -1=up45, 0=flat, 1=down45
+    input:{left:false,right:false,jump:false,attack:false,dash:false,up:false,down:false},
+    prevInput:{left:false,right:false,jump:false,attack:false,dash:false,up:false,down:false},
   };
 }
 
@@ -380,7 +381,7 @@ function spawnPlayer(p,scene){
   p.dashing=false;p.dashTimer=0;p.dashCooldownTimer=0.5;
   p.shootCooldownTimer=0;p.invincibleTimer=1.0;
   p.coyoteTimer=0;p.jumpBufferTimer=0;p.dead=false;
-  p.gravityFlipped=false;p.boostTimer=0;p.portalCooldown=0;
+  p.gravityFlipped=false;p.boostTimer=0;p.portalCooldown=0;p.aimAngle=0;
   p.hp=p.char.maxHP;
 }
 
@@ -484,17 +485,29 @@ function tickRoom(room){
 
     if(inp.jump&&!prev.jump)p.jumpBufferTimer=PLAYER_BASE.jumpBuffer;
 
+    // Aim angle: up/down keys
+    if(inp.up)        p.aimAngle=-1;
+    else if(inp.down) p.aimAngle=1;
+    else              p.aimAngle=0;
+
     // Shoot
     if(inp.attack&&!prev.attack&&p.shootCooldownTimer<=0){
       p.shootCooldownTimer=ch.shootCooldown;
+      const aimRad = p.aimAngle * Math.PI / 4; // -45, 0, +45 degrees
+      const spd = ch.bulletSpeed;
+      const bvx = p.facing * spd * Math.cos(aimRad);
+      const bvy = spd * Math.sin(aimRad);
+      const bOffY = p.aimAngle === -1 ? p.y + PLAYER_BASE.height*0.1
+                  : p.aimAngle ===  1 ? p.y + PLAYER_BASE.height*0.7
+                  : p.y + PLAYER_BASE.height*0.4;
       room.bullets.push({
         id:room.bulletIdCounter++,ownerIndex:p.index,
         x:p.x+(p.facing>0?PLAYER_BASE.width+4:-12),
-        y:p.y+PLAYER_BASE.height*0.4,
-        vx:p.facing*ch.bulletSpeed,vy:0,
-        life:1.2,damage:ch.bulletDamage,
+        y:bOffY,
+        vx:bvx, vy:bvy,
+        life:1.4,damage:ch.bulletDamage,
         knockbackX:ch.knockbackX,knockbackY:ch.knockbackY,
-        bounces:0,
+        bounces:0, aimAngle:p.aimAngle,
       });
     }
 
@@ -769,7 +782,7 @@ function tickRoom(room){
       hp:p.hp,maxHP:p.char.maxHP,
       facing:p.facing,onGround:p.onGround,dashing:p.dashing,
       doubleJumped:p.doubleJumped,invincible:p.invincibleTimer>0,
-      dead:p.dead,gravityFlipped:p.gravityFlipped,boosting:p.boostTimer>0,
+      dead:p.dead,gravityFlipped:p.gravityFlipped,boosting:p.boostTimer>0,aimAngle:p.aimAngle,
     })),
     bullets:room.bullets.map(b=>({id:b.id,x:b.x,y:b.y,ownerIndex:b.ownerIndex,damage:b.damage,bounces:b.bounces||0})),
     winner:room.winner,
@@ -871,7 +884,7 @@ io.on('connection',(socket)=>{
     if(!myRoom||myIndex<0) return;
     const p=myRoom.players[myIndex];
     if(!p) return;
-    p.input={left:!!inp.left,right:!!inp.right,jump:!!inp.jump,attack:!!inp.attack,dash:!!inp.dash};
+    p.input={left:!!inp.left,right:!!inp.right,jump:!!inp.jump,attack:!!inp.attack,dash:!!inp.dash,up:!!inp.up,down:!!inp.down};
   });
 
   socket.on('requestRestart',()=>{
