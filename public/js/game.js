@@ -95,8 +95,8 @@ let shakeAmt = 0;
 function addShake(amt) { shakeAmt = Math.max(shakeAmt, amt); }
 
 // ── Particles ─────────────────────────────────────────────────────────────
-const CHAR_COLORS = { scout: '#4cc9f0', tank: '#f72585' };
-const CHAR_DARKS  = { scout: '#0d4f66', tank: '#5c0a30' };
+const CHAR_COLORS = { scout: '#4cc9f0', tank: '#f5c400' };
+const CHAR_DARKS  = { scout: '#0d4f66', tank: '#6b5500' };
 
 let particles = [];
 
@@ -467,6 +467,134 @@ function drawHazards() {
   }
 }
 
+function drawSpecialObjects() {
+  if (!sceneData || !gameState) return;
+  const now = Date.now() / 1000;
+
+  // ── Reflect walls ──
+  for (const rw of (sceneData.reflectWalls || [])) {
+    ctx.save();
+    const rwg = ctx.createLinearGradient(rw.x, rw.y, rw.x + rw.w, rw.y);
+    rwg.addColorStop(0, 'rgba(0,200,255,0.05)');
+    rwg.addColorStop(0.5, 'rgba(0,220,255,0.35)');
+    rwg.addColorStop(1, 'rgba(0,200,255,0.05)');
+    ctx.fillStyle = rwg; ctx.fillRect(rw.x, rw.y, rw.w, rw.h);
+    ctx.shadowColor = '#00ccff'; ctx.shadowBlur = 12;
+    ctx.strokeStyle = 'rgba(0,200,255,0.7)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(rw.x, rw.y, rw.w, rw.h);
+    ctx.restore();
+    // bounce arrows
+    ctx.save(); ctx.fillStyle = 'rgba(0,200,255,0.5)';
+    ctx.font = '10px Courier New'; ctx.textAlign = 'center';
+    for (let ay = rw.y + 20; ay < rw.y + rw.h - 10; ay += 40)
+      ctx.fillText('↔', rw.x + rw.w / 2, ay);
+    ctx.restore();
+  }
+
+  // ── Portals ──
+  for (const portal of (sceneData.portals || [])) {
+    const pulse = 0.7 + Math.sin(now * 4) * 0.3;
+    [[portal.ax, portal.ay, '#aa44ff'], [portal.bx, portal.by, '#44ffaa']].forEach(([px, py, col]) => {
+      ctx.save();
+      ctx.shadowColor = col; ctx.shadowBlur = 20 * pulse;
+      const pg = ctx.createLinearGradient(px, py - portal.h/2, px, py + portal.h/2);
+      pg.addColorStop(0, col + '44'); pg.addColorStop(0.5, col + 'cc'); pg.addColorStop(1, col + '44');
+      ctx.fillStyle = pg;
+      ctx.fillRect(px, py - portal.h / 2, portal.w, portal.h);
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
+      ctx.strokeRect(px, py - portal.h / 2, portal.w, portal.h);
+      ctx.restore();
+      // swirl
+      ctx.save(); ctx.globalAlpha = 0.6 * pulse;
+      ctx.fillStyle = col; ctx.font = '14px Courier New'; ctx.textAlign = 'center';
+      ctx.fillText('⟳', px + portal.w / 2, py + 5);
+      ctx.restore();
+    });
+    // line connecting them
+    ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#8888ff';
+    ctx.lineWidth = 1; ctx.setLineDash([8, 8]);
+    ctx.beginPath(); ctx.moveTo(portal.ax + portal.w/2, portal.ay);
+    ctx.lineTo(portal.bx + portal.w/2, portal.by); ctx.stroke(); ctx.restore();
+  }
+
+  // ── Boost pads ──
+  for (const bp of (sceneData.boostPads || [])) {
+    ctx.save();
+    const bpg = ctx.createLinearGradient(bp.x, bp.y, bp.x, bp.y + bp.h);
+    bpg.addColorStop(0, '#ffaa00'); bpg.addColorStop(1, '#cc6600');
+    ctx.fillStyle = bpg; ctx.fillRect(bp.x, bp.y, bp.w, bp.h);
+    ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#ffcc44'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(bp.x, bp.y, bp.w, bp.h); ctx.restore();
+    ctx.save(); ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9;
+    ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText('▶▶', bp.x + bp.w / 2, bp.y + bp.h / 2 + 4); ctx.restore();
+  }
+
+  // ── Spike platforms ──
+  for (const sp of (sceneData.spikePlatforms || [])) {
+    const plat = sceneData.platforms[sp.platformIdx];
+    if (!plat) continue;
+    const spikeW = 12, count = 4;
+    const drawSpikes = (sx, sy) => {
+      ctx.save();
+      ctx.fillStyle = '#ff4444'; ctx.shadowColor = '#ff2222'; ctx.shadowBlur = 6;
+      for (let k = 0; k < count; k++) {
+        const ky = sy + k * (plat.h + 16) / count;
+        ctx.beginPath();
+        ctx.moveTo(sx, ky);
+        ctx.lineTo(sx + spikeW / 2, ky + 8);
+        ctx.lineTo(sx + spikeW, ky);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    };
+    if (sp.side === 'right' || sp.side === 'both')
+      drawSpikes(plat.x + plat.w, plat.y - 8);
+    if (sp.side === 'left' || sp.side === 'both')
+      drawSpikes(plat.x - spikeW, plat.y - 8);
+  }
+
+  // ── Bomb boxes ──
+  if (gameState.bombBoxes) {
+    for (const box of gameState.bombBoxes) {
+      if (!box.alive) continue;
+      ctx.save();
+      const pulse = 0.8 + Math.sin(now * 5) * 0.2;
+      ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8 * pulse;
+      const bg = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
+      bg.addColorStop(0, '#cc3300'); bg.addColorStop(1, '#661100');
+      ctx.fillStyle = bg; ctx.fillRect(box.x, box.y, box.w, box.h);
+      ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.w, box.h); ctx.restore();
+      ctx.save(); ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Courier New';
+      ctx.textAlign = 'center';
+      ctx.fillText('💥', box.x + box.w / 2, box.y + box.h / 2 + 5); ctx.restore();
+    }
+  }
+
+  // ── Health packs ──
+  if (gameState.healthPacks) {
+    for (const hp of gameState.healthPacks) {
+      if (!hp.alive) continue;
+      const pulse = 0.7 + Math.sin(now * 3) * 0.3;
+      ctx.save();
+      ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 14 * pulse;
+      ctx.fillStyle = '#00cc66';
+      ctx.beginPath(); ctx.arc(hp.x, hp.y, hp.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#88ffcc'; ctx.lineWidth = 2;
+      ctx.stroke(); ctx.restore();
+      // Cross
+      ctx.save(); ctx.fillStyle = '#fff'; ctx.lineWidth = 3;
+      ctx.strokeStyle = '#fff';
+      ctx.beginPath(); ctx.moveTo(hp.x - 5, hp.y); ctx.lineTo(hp.x + 5, hp.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hp.x, hp.y - 5); ctx.lineTo(hp.x, hp.y + 5); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
 function render(ts) {
   requestAnimationFrame(render);
   const now = ts / 1000;
@@ -516,6 +644,7 @@ function render(ts) {
     for (const lp of sceneData.launchPads) drawPlatform({ ...lp, type: 'launchpad' }, {});
 
     drawHazards();
+    drawSpecialObjects();
   }
 
   if (!gameState) { updateParticles(dt); ctx.restore(); return; }
@@ -661,6 +790,18 @@ function render(ts) {
       ctx.restore();
     }
 
+    // Boost speed lines
+    if (ps.boosting) {
+      ctx.save(); ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2;
+      for (let sl = 0; sl < 4; sl++) {
+        const lx = ps.x - ps.facing * (20 + sl * 12);
+        const ly = ps.y + PH * 0.3 + sl * (PH * 0.12);
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx - ps.facing * 14, ly); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // YOU label
     if (ps.index === myIndex) {
       ctx.save();
@@ -724,7 +865,7 @@ function render(ts) {
 
 function getCharColor(index) {
   const ch = playerChars[index];
-  return ch ? ch.color : (index === 0 ? '#4cc9f0' : '#f72585');
+  return ch ? ch.color : (index === 0 ? '#4cc9f0' : '#f5c400');
 }
 
 function updateParticles(dt) {
@@ -880,6 +1021,15 @@ function applyScenePayload(payload) {
     if (labelEl) labelEl.textContent = c.char.label || '';
   }
   if (sceneLabel) sceneLabel.textContent = sceneData.name || '';
+  // Ensure all new scene fields have defaults
+  sceneData.portals      = sceneData.portals      || [];
+  sceneData.bombBoxes    = sceneData.bombBoxes     || [];
+  sceneData.spikePlatforms = sceneData.spikePlatforms || [];
+  sceneData.boostPads    = sceneData.boostPads     || [];
+  sceneData.reflectWalls = sceneData.reflectWalls  || [];
+  sceneData.iceZones     = sceneData.iceZones      || [];
+  sceneData.gravityPads  = sceneData.gravityPads   || [];
+  sceneData.windZones    = sceneData.windZones      || [];
   resizeCanvas();
 }
 
