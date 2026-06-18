@@ -153,50 +153,106 @@ function getPlayerDark(ps) {
 function drawBackground() {
   const theme = sceneData ? sceneData.theme : 'neon';
   const W = world.width, H = world.height;
+  const now = Date.now() / 1000;
 
   if (theme === 'lava') {
-    // Dark fiery bg
     const bg = ctx.createRadialGradient(W/2, H, 0, W/2, H*0.3, H);
-    bg.addColorStop(0, '#1a0800');
-    bg.addColorStop(1, '#0d0500');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-    // Glow strips near bottom
-    ctx.save();
-    ctx.globalAlpha = 0.15;
-    const lava = ctx.createLinearGradient(0, H-120, 0, H);
-    lava.addColorStop(0, 'transparent');
-    lava.addColorStop(1, '#ff4400');
-    ctx.fillStyle = lava;
-    ctx.fillRect(0, H-120, W, 120);
-    ctx.restore();
+    bg.addColorStop(0, '#1a0800'); bg.addColorStop(1, '#0d0500');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalAlpha = 0.15;
+    const lv = ctx.createLinearGradient(0, H-120, 0, H);
+    lv.addColorStop(0, 'transparent'); lv.addColorStop(1, '#ff4400');
+    ctx.fillStyle = lv; ctx.fillRect(0, H-120, W, 120); ctx.restore();
   } else if (theme === 'void') {
     const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.7);
-    bg.addColorStop(0, '#050510');
-    bg.addColorStop(1, '#020208');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-    // Stars
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = '#fff';
-    // Use a seeded pattern (fixed positions based on simple hash)
+    bg.addColorStop(0, '#050510'); bg.addColorStop(1, '#020208');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#fff';
     for (let i = 0; i < 80; i++) {
-      const sx = ((i * 137 + 17) % W);
-      const sy = ((i * 89  + 41) % (H * 0.85));
-      const sr = 0.5 + (i % 3) * 0.5;
-      ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill();
+      const sx = ((i * 137 + 17) % W), sy = ((i * 89 + 41) % (H * 0.85));
+      ctx.beginPath(); ctx.arc(sx, sy, 0.5 + (i%3)*0.5, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  } else if (theme === 'ice') {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#050d1a'); bg.addColorStop(1, '#0a1828');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Shimmer lines
+    ctx.save(); ctx.globalAlpha = 0.07;
+    ctx.strokeStyle = '#88ddff'; ctx.lineWidth = 1;
+    for (let i = 0; i < 20; i++) {
+      const lx = (i * 63 + now * 8) % W;
+      ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx + 40, H); ctx.stroke();
+    }
+    ctx.restore();
+    // Ice ground glow
+    ctx.save(); ctx.globalAlpha = 0.2;
+    const ig = ctx.createLinearGradient(0, H-100, 0, H);
+    ig.addColorStop(0, 'transparent'); ig.addColorStop(1, '#44aaff');
+    ctx.fillStyle = ig; ctx.fillRect(0, H-100, W, 100); ctx.restore();
+  } else if (theme === 'death') {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#080008'); bg.addColorStop(1, '#100010');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Red pulse at pit locations
+    ctx.save(); ctx.globalAlpha = 0.06 + Math.sin(now*2)*0.03;
+    ctx.fillStyle = '#ff0044';
+    [220, 540, 860].forEach(px => ctx.fillRect(px, H-80, 120, 80));
+    ctx.restore();
+  } else if (theme === 'mirror') {
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#080018'); bg.addColorStop(0.5, '#12002a'); bg.addColorStop(1, '#080018');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Center glow
+    ctx.save(); ctx.globalAlpha = 0.08 + Math.sin(now*1.5)*0.04;
+    const cg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 200);
+    cg.addColorStop(0, '#aa44ff'); cg.addColorStop(1, 'transparent');
+    ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H); ctx.restore();
+  } else if (theme === 'gravity') {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#001818'); bg.addColorStop(0.5, '#000808'); bg.addColorStop(1, '#001818');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Top/bottom glow indicating both gravity directions
+    ctx.save(); ctx.globalAlpha = 0.12;
+    ctx.fillStyle = '#00ffaa'; ctx.fillRect(0, 0, W, 40);
+    ctx.fillRect(0, H-40, W, 40); ctx.restore();
+  } else if (theme === 'storm') {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#000a18'); bg.addColorStop(1, '#001428');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Vertical wind streaks in the wind zone
+    ctx.save(); ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = '#aaddff'; ctx.lineWidth = 1;
+    for (let i = 0; i < 18; i++) {
+      const wx = 280 + (i * 37) % 640;
+      const wy = (now * 180 + i * 40) % H;
+      ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + 4, wy - 60); ctx.stroke();
+    }
+    ctx.restore();
+  } else if (theme === 'acid') {
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#040a00'); bg.addColorStop(1, '#081400');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // Acid drip streaks on sides
+    ctx.save(); ctx.globalAlpha = 0.07;
+    ctx.fillStyle = '#44ff00';
+    for (let i = 0; i < 12; i++) {
+      const ax = (i * 103) % W;
+      const ay = (now * 60 + i * 55) % H;
+      ctx.fillRect(ax, ay, 3, 20 + (i%4)*10);
     }
     ctx.restore();
   } else {
-    // Neon city
-    ctx.fillStyle = '#06060c';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#06060c'; ctx.fillRect(0, 0, W, H);
   }
 
   // Grid
-  const gridColor = (sceneData && sceneData.gridColor) || 'rgba(42,42,64,0.4)';
-  ctx.strokeStyle = gridColor;
+  const GRID_COLORS = {
+    neon: 'rgba(42,42,80,0.35)', lava: 'rgba(80,30,0,0.3)', void: 'rgba(20,20,60,0.3)',
+    ice: 'rgba(40,80,120,0.25)', death: 'rgba(60,0,30,0.3)', mirror: 'rgba(60,20,80,0.25)',
+    gravity: 'rgba(0,60,50,0.25)', storm: 'rgba(20,50,80,0.25)', acid: 'rgba(20,50,0,0.25)',
+  };
+  ctx.strokeStyle = GRID_COLORS[theme] || 'rgba(42,42,64,0.3)';
   ctx.lineWidth = 1;
   for (let gx = 0; gx <= W; gx += 80) { ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,H); ctx.stroke(); }
   for (let gy = 0; gy <= H; gy += 80) { ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(W,gy); ctx.stroke(); }
@@ -287,40 +343,127 @@ function drawPlatform(p, extra) {
 
 function drawHazards() {
   if (!sceneData) return;
+  const now = Date.now() / 1000;
+
+  // Lava pools
   for (const hz of sceneData.hazards) {
-    // Lava pool
-    const now = Date.now() / 1000;
     ctx.save();
     const lg = ctx.createLinearGradient(hz.x, hz.y, hz.x, hz.y + hz.h);
     lg.addColorStop(0, `rgba(255,${80 + Math.sin(now*3)*30},0,0.9)`);
     lg.addColorStop(0.5, `rgba(200,${40 + Math.sin(now*2)*20},0,0.7)`);
     lg.addColorStop(1, 'rgba(100,10,0,0.5)');
-    ctx.fillStyle = lg;
-    ctx.fillRect(hz.x, hz.y, hz.w, hz.h);
-
-    // Animated bubbles
+    ctx.fillStyle = lg; ctx.fillRect(hz.x, hz.y, hz.w, hz.h);
     ctx.fillStyle = `rgba(255,${120 + Math.sin(now*4)*40},0,0.5)`;
     for (let b = 0; b < 6; b++) {
       const bx = hz.x + hz.w * ((b * 0.17 + now * 0.08 + b * 0.03) % 1);
       const by = hz.y + hz.h * 0.5 + Math.sin(now * 2 + b) * hz.h * 0.3;
       ctx.beginPath(); ctx.arc(bx, by, 5 + Math.sin(now + b) * 2, 0, Math.PI*2); ctx.fill();
     }
-
-    // Glow
-    ctx.shadowColor = '#ff4400';
-    ctx.shadowBlur = 24;
-    ctx.strokeStyle = 'rgba(255,100,0,0.6)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(hz.x, hz.y, hz.w, hz.h);
-    ctx.restore();
-
-    // DANGER text
+    ctx.shadowColor = '#ff4400'; ctx.shadowBlur = 24;
+    ctx.strokeStyle = 'rgba(255,100,0,0.6)'; ctx.lineWidth = 2;
+    ctx.strokeRect(hz.x, hz.y, hz.w, hz.h); ctx.restore();
     ctx.save();
     ctx.fillStyle = `rgba(255,200,0,${0.5 + Math.sin(now*3)*0.3})`;
-    ctx.font = 'bold 11px Courier New';
-    ctx.textAlign = 'center';
-    ctx.fillText('⚠ LAVA ⚠', hz.x + hz.w/2, hz.y + hz.h/2 + 5);
+    ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText('⚠ LAVA ⚠', hz.x + hz.w/2, hz.y + hz.h/2 + 5); ctx.restore();
+  }
+
+  // Ice zones (floor shimmer overlay)
+  for (const iz of (sceneData.iceZones || [])) {
+    ctx.save(); ctx.globalAlpha = 0.18;
+    const ig = ctx.createLinearGradient(iz.x, iz.y, iz.x, iz.y + iz.h);
+    ig.addColorStop(0, '#88ddff'); ig.addColorStop(1, '#2266aa');
+    ctx.fillStyle = ig; ctx.fillRect(iz.x, iz.y, iz.w, iz.h);
+    // Sparkles
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#ccffff';
+    for (let s = 0; s < 10; s++) {
+      const sx = iz.x + (s * 127) % iz.w;
+      const sy = iz.y + 4 + Math.sin(now * 2 + s) * 4;
+      ctx.fillRect(sx, sy, 3, 3);
+    }
     ctx.restore();
+    // ICE label
+    ctx.save(); ctx.fillStyle = 'rgba(180,230,255,0.5)';
+    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillText('❄ ICE ❄', iz.x + iz.w/2, iz.y + 14); ctx.restore();
+  }
+
+  // Gravity pads
+  for (const gp of (sceneData.gravityPads || [])) {
+    ctx.save();
+    const gpg = ctx.createLinearGradient(gp.x, gp.y, gp.x, gp.y + gp.h);
+    gpg.addColorStop(0, '#00ffaa'); gpg.addColorStop(1, '#007755');
+    ctx.fillStyle = gpg; ctx.fillRect(gp.x, gp.y, gp.w, gp.h);
+    ctx.shadowColor = '#00ffaa'; ctx.shadowBlur = 16;
+    ctx.strokeStyle = '#00ffaa'; ctx.lineWidth = 2;
+    ctx.strokeRect(gp.x, gp.y, gp.w, gp.h); ctx.restore();
+    ctx.save(); ctx.fillStyle = '#00ffaa'; ctx.globalAlpha = 0.9;
+    ctx.font = 'bold 13px Courier New'; ctx.textAlign = 'center';
+    const arrow = gp.y > 400 ? '▲ FLIP' : '▼ FLIP';
+    ctx.fillText(arrow, gp.x + gp.w/2, gp.y + gp.h/2 + 5); ctx.restore();
+  }
+
+  // Wind zones (subtle overlay)
+  for (const wz of (sceneData.windZones || [])) {
+    ctx.save(); ctx.globalAlpha = 0.04 + Math.sin(now*2)*0.02;
+    ctx.fillStyle = '#aaddff'; ctx.fillRect(wz.x, wz.y, wz.w, wz.h); ctx.restore();
+    // Upward arrows
+    ctx.save(); ctx.globalAlpha = 0.3; ctx.fillStyle = '#88bbff';
+    ctx.font = '14px Courier New'; ctx.textAlign = 'center';
+    for (let ay = 0; ay < 5; ay++) {
+      const arY = wz.y + wz.h - (((now * 80 + ay * 120) % wz.h));
+      ctx.fillText('↑', wz.x + wz.w/2, arY);
+    }
+    ctx.restore();
+  }
+
+  // Mirror wall
+  if (sceneData.mirrorWall && gameState && gameState.mirrorWall) {
+    const mw = sceneData.mirrorWall;
+    const ms = gameState.mirrorWall;
+    if (ms.visible) {
+      ctx.save();
+      const mg = ctx.createLinearGradient(mw.x, mw.y, mw.x + mw.w, mw.y);
+      mg.addColorStop(0, 'rgba(150,80,255,0.1)');
+      mg.addColorStop(0.5, 'rgba(180,100,255,0.7)');
+      mg.addColorStop(1, 'rgba(150,80,255,0.1)');
+      ctx.fillStyle = mg; ctx.fillRect(mw.x, mw.y, mw.w, mw.h);
+      ctx.shadowColor = '#aa44ff'; ctx.shadowBlur = 20;
+      ctx.strokeStyle = '#cc66ff'; ctx.lineWidth = 2;
+      ctx.strokeRect(mw.x, mw.y, mw.w, mw.h); ctx.restore();
+    } else {
+      // Fading ghost
+      ctx.save(); ctx.globalAlpha = 0.15;
+      ctx.strokeStyle = '#aa44ff'; ctx.lineWidth = 1; ctx.setLineDash([6, 6]);
+      ctx.strokeRect(mw.x, mw.y, mw.w, mw.h); ctx.restore();
+    }
+  }
+
+  // Acid drops
+  if (gameState && gameState.acidDrops) {
+    for (const d of gameState.acidDrops) {
+      ctx.save();
+      const alpha = d.landed ? Math.min(1, d.life * 0.6) : 0.85;
+      ctx.globalAlpha = alpha;
+      const ag = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.h);
+      ag.addColorStop(0, '#88ff00'); ag.addColorStop(1, '#336600');
+      ctx.fillStyle = ag; ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.shadowColor = '#88ff00'; ctx.shadowBlur = 12;
+      ctx.strokeStyle = '#aaff44'; ctx.lineWidth = 1;
+      ctx.strokeRect(d.x, d.y, d.w, d.h);
+      // Drip trail if falling
+      if (!d.landed) {
+        ctx.globalAlpha = alpha * 0.4;
+        ctx.fillStyle = '#66cc00';
+        ctx.fillRect(d.x + d.w*0.3, d.y - 30, d.w*0.4, 30);
+      }
+      ctx.restore();
+      if (d.landed) {
+        ctx.save(); ctx.globalAlpha = alpha * 0.7;
+        ctx.fillStyle = '#aaff00'; ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+        ctx.fillText('☠ ACID', d.x + d.w/2, d.y - 4); ctx.restore();
+      }
+    }
   }
 }
 
@@ -506,6 +649,15 @@ function render(ts) {
       ctx.save(); ctx.globalAlpha = 0.35;
       ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([4,4]);
       ctx.strokeRect(ps.x-2, ps.y-2, PW+4, PH+4);
+      ctx.restore();
+    }
+
+    // Gravity flip indicator
+    if (ps.gravityFlipped) {
+      ctx.save();
+      ctx.fillStyle = '#00ffaa'; ctx.font = 'bold 11px Courier New';
+      ctx.textAlign = 'center'; ctx.globalAlpha = 0.8;
+      ctx.fillText('↕', ps.x + PW/2, ps.y + PH/2 + 5);
       ctx.restore();
     }
 
